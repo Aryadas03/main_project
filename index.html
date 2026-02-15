@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AQI Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Air Quality Index Predictor</h1>
+            <p>Check real-time air quality and predict AQI levels</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Location Input Section -->
+            <div class="card">
+                <h2>Enter Location</h2>
+                <div class="input-group">
+                    <input type="text" id="location" placeholder="Enter city name (e.g., Delhi, Mumbai, London)" />
+                    <button onclick="fetchAirQuality()" class="btn-primary">Get Air Quality</button>
+                </div>
+                <p class="info-text">💡 Tip: Enter city names or specific locations for accurate results</p>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Fetching air quality data...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="error" class="error" style="display: none;"></div>
+
+            <!-- Air Quality Data Section -->
+            <div id="airQualitySection" class="card" style="display: none;">
+                <h2>Air Quality Data for <span id="cityName"></span></h2>
+                
+                <!-- Current AQI Display -->
+                <div id="currentAqiBox" class="aqi-box">
+                    <h3>Current AQI</h3>
+                    <div class="aqi-value" id="currentAqi">--</div>
+                    <div class="aqi-category" id="currentCategory">--</div>
+                </div>
+
+                <!-- Pollutants Grid -->
+                <div class="pollutants-grid">
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">PM2.5</span>
+                        <span class="pollutant-value" id="pm25">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">PM10</span>
+                        <span class="pollutant-value" id="pm10">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">NO</span>
+                        <span class="pollutant-value" id="no">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">NO2</span>
+                        <span class="pollutant-value" id="no2">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">NOx</span>
+                        <span class="pollutant-value" id="nox">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">NH3</span>
+                        <span class="pollutant-value" id="nh3">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">CO</span>
+                        <span class="pollutant-value" id="co">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">SO2</span>
+                        <span class="pollutant-value" id="so2">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">O3</span>
+                        <span class="pollutant-value" id="o3">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">Benzene</span>
+                        <span class="pollutant-value" id="benzene">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">Toluene</span>
+                        <span class="pollutant-value" id="toluene">--</span>
+                    </div>
+                    <div class="pollutant-item">
+                        <span class="pollutant-label">Xylene</span>
+                        <span class="pollutant-value" id="xylene">--</span>
+                    </div>
+                </div>
+
+                <!-- Predict Button -->
+                <button onclick="predictAqi()" class="btn-predict">🔮 Predict AQI Level</button>
+            </div>
+
+            <!-- Prediction Result Section -->
+            <div id="predictionSection" class="card prediction-card" style="display: none;">
+                <h2>Predicted AQI</h2>
+                <div class="prediction-result">
+                    <div class="predicted-value" id="predictedAqi">--</div>
+                    <div class="predicted-category" id="predictedCategory">--</div>
+                </div>
+                <div class="category-legend">
+                    <h3>AQI Categories</h3>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #00E400;"></span>
+                        <span>0-50: Good</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #FFFF00;"></span>
+                        <span>51-100: Moderate</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #FF7E00;"></span>
+                        <span>101-150: Unhealthy for Sensitive Groups</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #FF0000;"></span>
+                        <span>151-200: Unhealthy</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #8F3F97;"></span>
+                        <span>201-300: Very Unhealthy</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #7E0023;"></span>
+                        <span>300+: Hazardous</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Data powered by WAQI API | ML Model: XGBoost</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentPollutants = null;
+
+        async function fetchAirQuality() {
+            const location = document.getElementById('location').value.trim();
+            
+            if (!location) {
+                showError('Please enter a location');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('airQualitySection').style.display = 'none';
+            document.getElementById('predictionSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/get_air_quality', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ location: location })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch air quality data');
+                }
+
+                // Store pollutants for prediction
+                currentPollutants = data.pollutants;
+
+                // Display data
+                displayAirQuality(data);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayAirQuality(data) {
+            // Show section
+            document.getElementById('airQualitySection').style.display = 'block';
+            
+            // Set city name
+            document.getElementById('cityName').textContent = data.city;
+
+            // Display current AQI if available
+            if (data.current_aqi) {
+                document.getElementById('currentAqi').textContent = data.current_aqi;
+                const category = getAqiCategory(data.current_aqi);
+                document.getElementById('currentCategory').textContent = category.name;
+                document.getElementById('currentAqiBox').style.borderColor = category.color;
+            } else {
+                document.getElementById('currentAqi').textContent = 'N/A';
+                document.getElementById('currentCategory').textContent = 'Not available';
+            }
+
+            // Display pollutants
+            const pollutants = data.pollutants;
+            document.getElementById('pm25').textContent = pollutants.pm25 || 'N/A';
+            document.getElementById('pm10').textContent = pollutants.pm10 || 'N/A';
+            document.getElementById('no').textContent = pollutants.no || 'N/A';
+            document.getElementById('no2').textContent = pollutants.no2 || 'N/A';
+            document.getElementById('nox').textContent = pollutants.nox || 'N/A';
+            document.getElementById('nh3').textContent = pollutants.nh3 || 'N/A';
+            document.getElementById('co').textContent = pollutants.co || 'N/A';
+            document.getElementById('so2').textContent = pollutants.so2 || 'N/A';
+            document.getElementById('o3').textContent = pollutants.o3 || 'N/A';
+            document.getElementById('benzene').textContent = pollutants.benzene || 'N/A';
+            document.getElementById('toluene').textContent = pollutants.toluene || 'N/A';
+            document.getElementById('xylene').textContent = pollutants.xylene || 'N/A';
+        }
+
+        async function predictAqi() {
+            if (!currentPollutants) {
+                showError('Please fetch air quality data first');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+
+            try {
+                const response = await fetch('/predict_aqi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pollutants: currentPollutants })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to predict AQI');
+                }
+
+                // Display prediction
+                displayPrediction(data);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayPrediction(data) {
+            document.getElementById('predictionSection').style.display = 'block';
+            document.getElementById('predictedAqi').textContent = data.predicted_aqi;
+            document.getElementById('predictedCategory').textContent = data.category;
+            
+            const predictionCard = document.querySelector('.prediction-result');
+            predictionCard.style.borderColor = data.color;
+            predictionCard.style.backgroundColor = data.color + '20';
+        }
+
+        function getAqiCategory(aqi) {
+            if (aqi <= 50) return { name: "Good", color: "#00E400" };
+            if (aqi <= 100) return { name: "Moderate", color: "#FFFF00" };
+            if (aqi <= 150) return { name: "Unhealthy for Sensitive Groups", color: "#FF7E00" };
+            if (aqi <= 200) return { name: "Unhealthy", color: "#FF0000" };
+            if (aqi <= 300) return { name: "Very Unhealthy", color: "#8F3F97" };
+            return { name: "Hazardous", color: "#7E0023" };
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Allow Enter key to trigger search
+        document.getElementById('location').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                fetchAirQuality();
+            }
+        });
+    </script>
+</body>
+</html>
