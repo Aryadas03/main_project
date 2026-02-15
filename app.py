@@ -37,16 +37,12 @@ def get_aqi_category(aqi_value):
     """Determine AQI category based on value"""
     if aqi_value <= 50:
         return "Good", "#00E400"
-    elif aqi_value <= 100:
-        return "Moderate", "#FFFF00"
     elif aqi_value <= 150:
-        return "Unhealthy for Sensitive Groups", "#FF7E00"
-    elif aqi_value <= 200:
-        return "Unhealthy", "#FF0000"
-    elif aqi_value <= 300:
-        return "Very Unhealthy", "#8F3F97"
+        return "Moderate", "#FFD600"
+    elif aqi_value <= 250:
+        return "Harmful", "#FF5252"
     else:
-        return "Hazardous", "#7E0023"
+        return "Dangerous", "#B71C1C"
 
 def fetch_air_quality_data(location):
     """Fetch air quality data from WAQI API"""
